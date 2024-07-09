@@ -1,0 +1,8 @@
+def main():
+    #Essa funcao e a principal o arquivo
+    for i in range(10):
+        print("maconha e bom")
+        #essa parte fala maconha e bom 10 vezes
+    #essa parte mostra o fim do programa
+    print("fim do programa")
+    

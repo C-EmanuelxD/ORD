@@ -26,7 +26,7 @@ def finalize(listas: list[io.TextIOWrapper], saida: io.TextIOWrapper, numListas:
         listas[i].close()
     saida.close()
 
-def leia_nome(lista: io.TextIOWrapper, nome_ant: str, existem_mais_nomes: bool, numListas: int)
+def leia_nome(lista: io.TextIOWrapper, nome_ant: str, existem_mais_nomes: bool, numListas: int):
     nome = lista.readline()
 
     if nome == "":
@@ -43,7 +43,7 @@ def leia_nome(lista: io.TextIOWrapper, nome_ant: str, existem_mais_nomes: bool, 
 
 
 
-def kwaymerge(numListas: int)
+def kwaymerge(numListas: int):
     anteriores, nomes, listas, saida, existem_mais_nomes = inicialize()
     for i in range(numListas):
         nomes.append(valor_baixo)
@@ -57,4 +57,4 @@ def kwaymerge(numListas: int)
             if nomes[i] < nomes[menor]:
                 menor = i
         saida.write(nomes[menor])
-        leia_nome(listas[menor],anteriores[menor]])
+        leia_nome(listas[menor],anteriores[menor])

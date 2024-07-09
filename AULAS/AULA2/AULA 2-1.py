@@ -11,6 +11,8 @@ def main():
                 achou = True
             else:
                 reg = leia_reg(entrada)
+                
+                
         if achou:
             sobrenome = reg.split(sep="|")
             i = 0
