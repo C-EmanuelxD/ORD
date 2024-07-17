@@ -43,9 +43,6 @@ def RemoverReg(Id: str, arqG: str):
 
 
 
-
-
-
 ###Função de leitura do cabeçalho e tratamento de erro#######
 
 def VerCabeca(arq:str):
