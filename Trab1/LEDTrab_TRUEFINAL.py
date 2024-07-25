@@ -4,7 +4,7 @@ import struct
 
 #VARIAVEIS GLOBAIS
 arqG = "dados.dat"
-tamMinimoSobra = 10 
+tamMinimoSobra = 15
 
 ##FUNÇÃO DE LEITURA DE OPERAÇÕES###########################
 def leOperacoes(nomeArqOP: str):
@@ -16,7 +16,7 @@ def leOperacoes(nomeArqOP: str):
         linha = ArqOP.readline()
         if char[0] == "b":
             Identificador = char[1]
-            print(f"Busca pelo registro de chave {Identificador}")
+            print(f"Busca pelo registro de chave {Identificador.strip()}")
             b, reg = BuscaPorID(Identificador, arqG)
             print(reg)
             
@@ -27,7 +27,7 @@ def leOperacoes(nomeArqOP: str):
             
         elif char[0] == "r":
             Identificador = char[1]
-            print(f"Remoção do registro de chave {Identificador}")
+            print(f"Remoção do registro de chave {Identificador.strip()}")
             RemoverReg(Identificador,arqG)
 
 ###########################################################
@@ -70,12 +70,12 @@ def Insercao(linhaInsercao, arqG):
             arq.write(ponteroLED)
         
             #ENTRA NO IF PARA MOSTRAR O TAMANHO REUTILIZADO E O TAMANHO DA SOBRA
-            if tamOffset > tam:
+            if tamOffset >= tam:
                 tamSobra = tamOffset-tam
                 print(f"Tamanho reutilizado {tamOffset}. (Sobra de {tamOffset-tam} bytes)")
                 tamOffset = tamOffset-tam-2#O -2 ESTA AQUI POR CONTA QUE O TAMANHO DISPONIVEL NAO LEVA EM CONTA OS 2 BYTES INICIAIS || CALCULO DO TAM DA SOBRA
                 #ADICIONA A SOBRA NA LED NOVAMENTE
-                if tamOffset > tamMinimoSobra:#TEM QUE ADICIONAR A SOBRA NO ROLE####
+                if tamOffset >= tamMinimoSobra:#TEM QUE ADICIONAR A SOBRA NO ROLE####
                     tamOffset = tamOffset.to_bytes(2) #tamOffset agora é o tamanho do novo registro (sobra)
                     registro = "*"
                     registro = registro.encode()
@@ -88,7 +88,7 @@ def Insercao(linhaInsercao, arqG):
                     tamOffset = int.from_bytes(tamOffset, byteorder='big', signed=False)
                     adicionar_na_led(posicaoPontero, tamOffset)
                 else:
-                    print(f"Não atingiu o tamanho minimo para ser adicionado na LED, portanto será considerado fragmentação de: ({tamSobra} bytes)")
+                    print(f"Não atingiu o tamanho minimo para ser adicionado na LED, portanto será considerado fragmentação interna de: ({tamSobra} bytes)")
                     #nova parte
                     arq.seek(offset)
                     tamReg = arq.read(2)
