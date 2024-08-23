@@ -35,29 +35,23 @@ def lePagina(rrn):
     return pag
 
 def escrevePag(rrn, pag: paginaArvore):
-    possui = False
+    print(pag.numChaves)
     with open(arqArv, 'wb') as arq:
-        try: #testando para ver se já existe alguma coisa no cabeçalho do arquivo
-            
-            arq.read(4)
-            possui = True #true para que já existe alg nos 4 primeiros bytes
-            
-        except: #se não houver, gera erro, e insere o valor 1, que significa que a árvore possui 1 página
-            arq.seek(0)
-            arq.write(st.pack('<I', 1)) ## sinalizando que a primeira pagina foi escrita
         offset = (tamReg*rrn)+4
         arq.seek(offset)
-        formato = f'<I{Ordem-1}i{Ordem-1}i{Ordem}i'
-        reg = st.pack(formato,pag.numChaves,*pag.chaves,*pag.offsetsFilhos,*pag.filhos) #empacotamento dos dados
-        arq.write(reg)  #Escrita completa de todos os valores da página
+        pag.numChaves = st.pack("<I",pag.numChaves)
+        arq.write(pag.numChaves)
+        for i in range(Ordem-1):
+            pag.chaves[i] = st.pack("<i",pag.chaves[i])
+            arq.write(pag.chaves[i])
+        for i in range(Ordem-1):
+            pag.offsetsFilhos[i] = st.pack('<i', pag.offsetsFilhos[i])
+            arq.write(pag.offsetsFilhos[i])
+        for i in range(Ordem):
+            pag.filhos[i] = st.pack('<i', pag.filhos[i])
+            arq.write(pag.filhos[i])
+
         
-        print("ENTORU")
-        
-        if possui == True: #Se anteriormente já existisse, o valor é incrementado pois outra página foi adicionada
-            arq.seek(0)
-            qtd = qtd + 1
-            qtd = st.pack("<I",qtd)
-            arq.write(qtd)
             
 
 
@@ -179,7 +173,7 @@ def divide(chave, filhoDir, pag: paginaArvore):
     pAtual.chaves = pag.chaves[:meio]
     pAtual.offsetsFilhos = pag.offsetsFilhos[:meio]
     pAtual.filhos = pag.filhos[:meio+1]
-    
+    #O ERRO ESTÁ NA HORA DE INSERIR COM [:MEIO], O RESTO DO VETOR VAI EMBORA E FICA APENAS OS INSERIDOS
     pNova.numChaves = Ordem-1-meio
     pNova.chaves = pag.chaves[meio+1:]
     pNova.offsetsFilhos = pag.offsetsFilhos[meio+1:]
@@ -188,7 +182,7 @@ def divide(chave, filhoDir, pag: paginaArvore):
     return chavePromo, filhoDirPromo, pAtual, pNova    
     
 
-def criaIndice(): #Função responsável por criar a árvore completa do arquivo games.dat
+"""""def criaIndice(): #Função responsável por criar a árvore completa do arquivo games.dat
     primeiraPag = paginaArvore()
     escrevePag(0, primeiraPag) #Primeira pagina criada
     
@@ -200,9 +194,56 @@ def criaIndice(): #Função responsável por criar a árvore completa do arquivo
             tam = st.unpack('<h',arq.read(2))[0]
             reg = arq.read(tam).decode()
             chave = int(reg.split("|")[0])
-            insereNaArvore(chave, 0)
-    
-    
+            insereNaArvore(chave, 0)"""""
+
+
+def percorreRegs(arq) -> int: #Retorna a próxima chave
+    tam = st.unpack('<h',arq.read(2))[0]
+    reg = arq.read(tam).decode()
+    chave = int(reg.split("|")[0])
+    try:
+        return chave, True
+    except:
+        return -1, False
+
+
+def gerenciadorDeIsercao(raiz):
+    with open(arqGam, 'rb') as arq:
+        arq.read(4)
+        chave, terminou = percorreRegs(arq)
+        while terminou:
+            chavePro, filhoDpro, promo = insereNaArvore(chave, raiz)
+            if promo:
+                pNova = paginaArvore()
+                pNova.chaves[0] = chavePro
+                pNova.offsetsFilhos[0] = calcOffset(chavePro)
+                pNova.filhos[0] = raiz
+                pNova.filhos[1] = filhoDpro
+                pNova.numChaves += 1
+                pNovaRRN = novoRRN()
+                escrevePag(pNovaRRN, pNova)
+                raiz = pNovaRRN
+            chave, terminou = percorreRegs(arq)
+
+    return raiz
+
+def principal():
+    try:
+        with open(arqArv, 'rb+')as arqArvb:
+            raiz = st.unpack('<I', arqArvb.read(4))[0]
+    except:
+        with open(arqArv, 'wb+') as arqArvb:
+            raiz = st.pack("<I", 0)
+            arqArvb.seek(0)
+            arqArvb.write(raiz)
+            pag = paginaArvore()
+            raiz = st.unpack('<I', raiz)[0]
+            escrevePag(raiz,pag)
+
+        raiz = gerenciadorDeIsercao(raiz)
+        raiz = st.pack("<I", raiz)
+        arqArvb.seek(0)
+        arqArvb.write(raiz)
 
 
 
@@ -214,11 +255,11 @@ def criaIndice(): #Função responsável por criar a árvore completa do arquivo
 
         
 
-""""if sys.argv[1] == '-c':
+"""if sys.argv[1] == '-c':
     print("===========================")
     print("Modo de criação da árvore-B")
     print("===========================")
-    criaIndice() #Cria indice encadeia funções de inserção da árvore, para a inserção de diversas chaves
+    principal()#Cria indice encadeia funções de inserção da árvore, para a inserção de diversas chaves
         
 elif sys.argv[1] == '-e':
     print("============================")
@@ -228,9 +269,11 @@ elif sys.argv[1] == '-e':
 elif sys.argv[1] == '-p':
     print("=============================")
     print("Modo de impressão da Árvore-B")
-    print("============================="
+    print("=============================")
     
 else:
-    print("Flag inválida. Encerrando...")"""""
+    print("Flag inválida. Encerrando...")"""
+
+principal()
+
     
-criaIndice()
