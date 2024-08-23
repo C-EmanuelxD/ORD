@@ -35,21 +35,20 @@ def lePagina(rrn):
     return pag
 
 def escrevePag(rrn, pag: paginaArvore):
-    print(pag.numChaves)
-    with open(arqArv, 'wb') as arq:
+    with open(arqArv, 'rb+') as arq:
         offset = (tamReg*rrn)+4
         arq.seek(offset)
-        pag.numChaves = st.pack("<I",pag.numChaves)
-        arq.write(pag.numChaves)
+        numChavesPacote = st.pack("<I", pag.numChaves)
+        arq.write(numChavesPacote)
         for i in range(Ordem-1):
-            pag.chaves[i] = st.pack("<i",pag.chaves[i])
-            arq.write(pag.chaves[i])
+            chavePacote = st.pack("<i", pag.chaves[i])
+            arq.write(chavePacote)
         for i in range(Ordem-1):
-            pag.offsetsFilhos[i] = st.pack('<i', pag.offsetsFilhos[i])
-            arq.write(pag.offsetsFilhos[i])
+            offsetsPacote = st.pack('<i', pag.offsetsFilhos[i])
+            arq.write(offsetsPacote)
         for i in range(Ordem):
-            pag.filhos[i] = st.pack('<i', pag.filhos[i])
-            arq.write(pag.filhos[i])
+            filhosPacote = st.pack('<i', pag.filhos[i])
+            arq.write(filhosPacote)
 
         
             
@@ -61,7 +60,6 @@ def calcOffset(chave: int): #Função para calcular o offset da chave no arquivo
         offsetPos = 4
         achou = False
         while not achou:
-            print(arq.tell())
             tam = st.unpack('<h',arq.read(2))[0]
             reg = arq.read(tam).decode()
             offsetPos += tam+2
@@ -81,12 +79,16 @@ def novoRRN():
         offset = arq.tell()
         return (offset - 4) // tamReg
         
-    
+def escreveRaiz(raiz):
+    with open(arqArv, 'rb+') as arq:
+        arq.seek(0)
+        raiz = st.pack("<I",raiz)
+        arq.write(raiz)           
 
 #############################################Funções de Busca############################################################
 def buscaNaPagina(chave, pag: paginaArvore):
     pos = 0
-    while pos < pag.numChaves and pag.chaves[pos]:
+    while pos < pag.numChaves and chave > pag.chaves[pos]:
         pos += 1
     if pos < pag.numChaves and chave == pag.chaves[pos]:
         return True, pos #se retornar verdadeiro, a chave está na página, na posição pos do vetor de chaves.
@@ -170,14 +172,15 @@ def divide(chave, filhoDir, pag: paginaArvore):
     pNova = paginaArvore()
     #divide as paginas:
     pAtual.numChaves = meio
-    pAtual.chaves = pag.chaves[:meio]
-    pAtual.offsetsFilhos = pag.offsetsFilhos[:meio]
-    pAtual.filhos = pag.filhos[:meio+1]
+    pAtual.chaves = pag.chaves[:meio] + [-1]*(Ordem-1-meio)
+    pAtual.offsetsFilhos = pag.offsetsFilhos[:meio] + [-1]*(Ordem-1-meio)
+    pAtual.filhos = pag.filhos[:meio+1] + [-1]*(Ordem - (meio+1))
     #O ERRO ESTÁ NA HORA DE INSERIR COM [:MEIO], O RESTO DO VETOR VAI EMBORA E FICA APENAS OS INSERIDOS
+    
     pNova.numChaves = Ordem-1-meio
-    pNova.chaves = pag.chaves[meio+1:]
-    pNova.offsetsFilhos = pag.offsetsFilhos[meio+1:]
-    pNova.filhos = pNova.filhos[meio+1:]
+    pNova.chaves = pag.chaves[meio+1:] + [-1] * (meio)
+    pNova.offsetsFilhos = pag.offsetsFilhos[meio+1:] + [-1] * (meio)
+    pNova.filhos = pNova.filhos[meio+1:] + [-1] * (Ordem - len(pag.filhos[meio+1:])+1)
     
     return chavePromo, filhoDirPromo, pAtual, pNova    
     
@@ -198,10 +201,10 @@ def divide(chave, filhoDir, pag: paginaArvore):
 
 
 def percorreRegs(arq) -> int: #Retorna a próxima chave
-    tam = st.unpack('<h',arq.read(2))[0]
-    reg = arq.read(tam).decode()
-    chave = int(reg.split("|")[0])
     try:
+        tam = st.unpack('<h',arq.read(2))[0]
+        reg = arq.read(tam).decode()
+        chave = int(reg.split("|")[0])
         return chave, True
     except:
         return -1, False
@@ -223,6 +226,7 @@ def gerenciadorDeIsercao(raiz):
                 pNovaRRN = novoRRN()
                 escrevePag(pNovaRRN, pNova)
                 raiz = pNovaRRN
+                escreveRaiz(raiz)
             chave, terminou = percorreRegs(arq)
 
     return raiz
@@ -241,21 +245,23 @@ def principal():
             escrevePag(raiz,pag)
 
         raiz = gerenciadorDeIsercao(raiz)
-        raiz = st.pack("<I", raiz)
-        arqArvb.seek(0)
-        arqArvb.write(raiz)
+        with open(arqArv, 'rb+')as arqArvb:
+            raiz = st.pack("<I", raiz)
+            arqArvb.seek(0)
+            arqArvb.write(raiz)
 
 
 
 
-
+principal()
 
 
 
 
         
-
-"""if sys.argv[1] == '-c':
+"""
+    
+if sys.argv[1] == '-c':
     print("===========================")
     print("Modo de criação da árvore-B")
     print("===========================")
@@ -272,8 +278,8 @@ elif sys.argv[1] == '-p':
     print("=============================")
     
 else:
-    print("Flag inválida. Encerrando...")"""
+    print("Flag inválida. Encerrando...")
 
-principal()
+"""
 
     
