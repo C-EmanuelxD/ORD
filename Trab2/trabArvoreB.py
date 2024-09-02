@@ -226,29 +226,16 @@ def divide(chave, filhoDir, pag: paginaArvore):
     pAtual.chaves = pag.chaves[:meio] + [-1]*(Ordem-1-meio)
     pAtual.offsetsFilhos = pag.offsetsFilhos[:meio] + [-1]*(Ordem-1-meio)
     pAtual.filhos = pag.filhos[:meio+1] + [-1]*(Ordem - (meio+1))
-    #O ERRO ESTÁ NA HORA DE INSERIR COM [:MEIO], O RESTO DO VETOR VAI EMBORA E FICA APENAS OS INSERIDOS
     
     pNova.numChaves = Ordem-1-meio
     pNova.chaves = pag.chaves[meio+1:] + [-1] * (meio)
     pNova.offsetsFilhos = pag.offsetsFilhos[meio+1:] + [-1] * (meio)
-    pNova.filhos = pNova.filhos[meio+1:] + [-1] * (Ordem - len(pag.filhos[meio+1:])+1)
+    pNova.filhos = pag.filhos[meio+1:]
+    for i in range((Ordem-meio)+1):
+        pNova.filhos.append(-1)
     
     return chavePromo, filhoDirPromo, pAtual, pNova    
     
-
-"""""def criaIndice(): #Função responsável por criar a árvore completa do arquivo games.dat
-    primeiraPag = paginaArvore()
-    escrevePag(0, primeiraPag) #Primeira pagina criada
-    
-    #Agora a obtenção e inserção das chaves na árvore
-    
-    with open(arqGam, 'rb') as arq:
-        qtd_reg = st.unpack('<I',arq.read(4))[0]
-        for i in range(qtd_reg):
-            tam = st.unpack('<h',arq.read(2))[0]
-            reg = arq.read(tam).decode()
-            chave = int(reg.split("|")[0])
-            insereNaArvore(chave, 0)"""""
 
 
 def percorreRegs(arq) -> int: #Retorna a próxima chave
@@ -267,6 +254,7 @@ def gerenciadorDeIsercao(raiz, chave=None):
         with open(arqGam, 'rb') as arq:
             arq.read(4)
             chave, terminou = percorreRegs(arq)
+            print(chave)
             while terminou:
                 chavePro, filhoDpro, promo = insereNaArvore(chave, raiz)
                 if promo:
@@ -299,29 +287,26 @@ def gerenciadorDeIsercao(raiz, chave=None):
 
 #############################################nao eh insercao###############################################################
 def exibirArvre():
-    try:
-        with open(arqArv, 'rb') as arq:
-            raiz = st.unpack('<I', arq.read(4))[0]
-            print(f"- - - - - - Raiz - - - - - -\nRaiz: {raiz}")            
-            arq.seek(0, os.SEEK_END)#aqui vai calcular a quantidade de paginas pelo tamanho do arquivo da arvore ja que eh fixo
-            tamArquivo = arq.tell()
-            totalPaginas = (tamArquivo - 4) // tamReg
-            for rrn in range(totalPaginas): #percorre as paginas :)
-                pag = lePagina(rrn)
-                print(f"Página {rrn}")
-                print("Chaves: ", end="") #end eh pra nao ficar dando \n toda vez
-                for i in range(pag.numChaves):
-                    print(pag.chaves[i], end=" | " if i < pag.numChaves - 1 else "\n")
-                print("Offsets: ", end="")
-                for i in range(pag.numChaves):
-                    print(pag.offsetsFilhos[i], end=" | " if i < pag.numChaves - 1 else "\n")
-                print("Filhas: ", end="")
-                for i in range(len(pag.filhos)):
-                    print(pag.filhos[i], end=" | " if i < len(pag.filhos) - 1 else "\n")
-                print("-" * 30)
+    with open(arqArv, 'rb') as arq:
+        raiz = st.unpack('<I', arq.read(4))[0]
+    i = 0         
+    while True:
+        try:
+            pag = lePagina(i)
+            if i == raiz:
+                print("=============== RAIZ ===============")
+            print(f"Pagina {i}:")
+            print(pag.chaves)
+            print(pag.offsetsFilhos)
+            print(pag.filhos)
+            i = i+1
+            print()
+        except:
+            break
+    print("Arvore exibida com sucesso!")
 
-    except Exception as e:
-        print(f"Erro ao abrir o arquivo: {e}")
+
+
 
 def principal():
     try:
@@ -344,15 +329,9 @@ def principal():
 
 
 
-
-#principal()
-#buscaNaArvoreArquivo(84) #ta funcionando isso aqui bonito legal
-#insereNoArquivo("181|Pac-Man|1980|Maze|Namco|Arcade|")
-#buscaNaArvoreArquivo(181)
 exibirArvre()
-        
-"""
-    
+
+""""
 if sys.argv[1] == '-c':
     print("===========================")
     print("Modo de criação da árvore-B")
