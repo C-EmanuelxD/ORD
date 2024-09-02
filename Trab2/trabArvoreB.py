@@ -7,7 +7,7 @@ import os
 #little endian e inteiro de 4 bytes: <I
 #little endian e inteiro de 2 bytes: <i
 
-Ordem = 5
+Ordem = 8
 tamReg = (12*Ordem)-4 #Calculo do tamanho dos registros que serão escritos no arquivo btree - Usaod também para calculo do rrn
 arqArv = 'btree.dat'
 arqGam = 'games.dat'
@@ -49,10 +49,6 @@ def escrevePag(rrn, pag: paginaArvore):
         for i in range(Ordem):
             filhosPacote = st.pack('<i', pag.filhos[i])
             arq.write(filhosPacote)
-
-        
-            
-
 
 def calcOffset(chave: int): #Função para calcular o offset da chave no arquivo games.dat
     with open(arqGam, 'rb') as arq:
@@ -104,15 +100,70 @@ def buscaNaArvore(chave, rrn):
         achou, pos = buscaNaPagina(chave, pag)
         
         if achou:
-            return True, rrn, pos #se achar, retorna True: que achou, RRN: o rrn da página que contém a chave, e a pos em pag.chaves, na qual a chave está.
+            return True, rrn, pos, pag.offsetsFilhos[pos] #se achar, retorna True: que achou, RRN: o rrn da página que contém a chave, e a pos em pag.chaves, na qual a chave está.
         else:
             return buscaNaArvore(chave, pag.filhos[pos])
+        
+def buscaNaArvoreArquivo(chave):
+    try:
+        with open(arqArv, 'rb+') as arqArvb:
+            raiz = st.unpack('<I', arqArvb.read(4))[0]
+        achou, rrn, pos, *offset  = buscaNaArvore(chave, raiz) #o * serve para lidar caso tenha um retorno maior do que o esperado no caso essa funcao retorna tanto 3 elementos quanto 4 ai o *offset pega tudo que vem adicional e coloca em um vetor e depois eh so trabalhar como isso como so retorna o offset offset[0] ja resolve
+        if achou == False:
+            print("Chave nao encontrada na arvore")
+        else:
+            try:
+                with open(arqGam, "rb") as arqGame:
+                    arqGame.seek(offset[0])
+                    tam = st.unpack('<h',arqGame.read(2))[0]
+                    reg = arqGame.read(tam).decode()
+                    print(f"o registro solicitado: {chave}")
+                    print(f"Registro: {reg}")
+            except:
+                print("Arquivo de games nao encontrado")
+    except Exception as e:
+        print(f"Arquivo da btree nao encontrado {e}")
 
 
 ################################################################################################################################################################
 
 ############################################## Funções referentes à inserções###################################################################################
 
+def insereNoArquivo(registro):
+    chave = int(registro.split("|")[0])
+    try:
+        with open(arqArv, 'rb+') as arqArvb:
+            arqArvb.seek(0)
+            raiz = int(st.unpack('<I', arqArvb.read(4))[0])
+        achou, rrn, pos = buscaNaArvore(chave, raiz)
+        print(achou)
+        if achou == False:
+            print("Chave nao encontrada na arvore, por isso iremos inserir no arquivo de games e depois na arvore")
+            try:
+                with open(arqGam, "rb+") as arqGame:
+                    print("entrou")
+                    tam = int(len(registro))
+                    tam = st.pack('<h',tam)
+                    registro = registro.encode()
+                    arqGame.seek(0, os.SEEK_END)
+                    arqGame.write(tam)
+                    arqGame.write(registro)
+                    arqGame.seek(0)
+                    #daqui pra baixo nao ta indo engracado
+                    cabeca = st.unpack('<I', arqGame.read(4))[0]
+                    cabeca += 1
+                    cabeca_bytes = st.pack('<I', cabeca)
+                    arqGame.seek(0)
+                    arqGame.write(cabeca_bytes)
+                    print("Foi inserido no arquivo e em sequencia na arvore")
+                raiz = gerenciadorDeIsercao(raiz, chave)
+                escreveRaiz(raiz)
+            except Exception as e:
+                print(f"Arquivo de games nao encontrado {e}")
+        else:
+            print("Chave ja inserida, o registro nao sera inserido")
+    except Exception as e:
+        print(f"Arquivo da btree nao encontrado {e}")
 
 def insereNaArvore(chave, rrnAtual): #O rrn atual na primeira chamada da inserção deve ser o rrn da raíz
     if rrnAtual == -1:
@@ -206,30 +257,71 @@ def percorreRegs(arq) -> int: #Retorna a próxima chave
         reg = arq.read(tam).decode()
         chave = int(reg.split("|")[0])
         return chave, True
+    
     except:
         return -1, False
 
 
-def gerenciadorDeIsercao(raiz):
-    with open(arqGam, 'rb') as arq:
-        arq.read(4)
-        chave, terminou = percorreRegs(arq)
-        while terminou:
-            chavePro, filhoDpro, promo = insereNaArvore(chave, raiz)
-            if promo:
-                pNova = paginaArvore()
-                pNova.chaves[0] = chavePro
-                pNova.offsetsFilhos[0] = calcOffset(chavePro)
-                pNova.filhos[0] = raiz
-                pNova.filhos[1] = filhoDpro
-                pNova.numChaves += 1
-                pNovaRRN = novoRRN()
-                escrevePag(pNovaRRN, pNova)
-                raiz = pNovaRRN
-                escreveRaiz(raiz)
+def gerenciadorDeIsercao(raiz, chave=None):
+    if chave is None:
+        with open(arqGam, 'rb') as arq:
+            arq.read(4)
             chave, terminou = percorreRegs(arq)
+            while terminou:
+                chavePro, filhoDpro, promo = insereNaArvore(chave, raiz)
+                if promo:
+                    pNova = paginaArvore()
+                    pNova.chaves[0] = chavePro
+                    pNova.offsetsFilhos[0] = calcOffset(chavePro)
+                    pNova.filhos[0] = raiz
+                    pNova.filhos[1] = filhoDpro
+                    pNova.numChaves += 1
+                    pNovaRRN = novoRRN()
+                    escrevePag(pNovaRRN, pNova)
+                    raiz = pNovaRRN
+                    escreveRaiz(raiz)
+                chave, terminou = percorreRegs(arq)
+    else:
+        chavePro, filhoDpro, promo = insereNaArvore(chave, raiz)
+        if promo:
+            pNova = paginaArvore()
+            pNova.chaves[0] = chavePro
+            pNova.offsetsFilhos[0] = calcOffset(chavePro)
+            pNova.filhos[0] = raiz
+            pNova.filhos[1] = filhoDpro
+            pNova.numChaves += 1
+            pNovaRRN = novoRRN()
+            escrevePag(pNovaRRN, pNova)
+            raiz = pNovaRRN
+            escreveRaiz(raiz)        
 
     return raiz
+
+#############################################nao eh insercao###############################################################
+def exibirArvre():
+    try:
+        with open(arqArv, 'rb') as arq:
+            raiz = st.unpack('<I', arq.read(4))[0]
+            print(f"- - - - - - Raiz - - - - - -\nRaiz: {raiz}")            
+            arq.seek(0, os.SEEK_END)#aqui vai calcular a quantidade de paginas pelo tamanho do arquivo da arvore ja que eh fixo
+            tamArquivo = arq.tell()
+            totalPaginas = (tamArquivo - 4) // tamReg
+            for rrn in range(totalPaginas): #percorre as paginas :)
+                pag = lePagina(rrn)
+                print(f"Página {rrn}")
+                print("Chaves: ", end="") #end eh pra nao ficar dando \n toda vez
+                for i in range(pag.numChaves):
+                    print(pag.chaves[i], end=" | " if i < pag.numChaves - 1 else "\n")
+                print("Offsets: ", end="")
+                for i in range(pag.numChaves):
+                    print(pag.offsetsFilhos[i], end=" | " if i < pag.numChaves - 1 else "\n")
+                print("Filhas: ", end="")
+                for i in range(len(pag.filhos)):
+                    print(pag.filhos[i], end=" | " if i < len(pag.filhos) - 1 else "\n")
+                print("-" * 30)
+
+    except Exception as e:
+        print(f"Erro ao abrir o arquivo: {e}")
 
 def principal():
     try:
@@ -253,11 +345,11 @@ def principal():
 
 
 
-principal()
-
-
-
-
+#principal()
+#buscaNaArvoreArquivo(84) #ta funcionando isso aqui bonito legal
+#insereNoArquivo("181|Pac-Man|1980|Maze|Namco|Arcade|")
+#buscaNaArvoreArquivo(181)
+exibirArvre()
         
 """
     
