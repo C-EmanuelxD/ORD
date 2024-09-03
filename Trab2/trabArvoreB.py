@@ -108,7 +108,7 @@ def buscaNaArvoreArquivo(chave):
     try:
         with open(arqArv, 'rb+') as arqArvb:
             raiz = st.unpack('<I', arqArvb.read(4))[0]
-        achou, rrn, pos, *offset  = buscaNaArvore(chave, raiz) #o * serve para lidar caso tenha um retorno maior do que o esperado no caso essa funcao retorna tanto 3 elementos quanto 4 ai o *offset pega tudo que vem adicional e coloca em um vetor e depois eh so trabalhar como isso como so retorna o offset offset[0] ja resolve
+        achou, rrn, pos, *offset  = buscaNaArvore(int(chave), raiz) #o * serve para lidar caso tenha um retorno maior do que o esperado no caso essa funcao retorna tanto 3 elementos quanto 4 ai o *offset pega tudo que vem adicional e coloca em um vetor e depois eh so trabalhar como isso como so retorna o offset offset[0] ja resolve
         if achou == False:
             print("Chave nao encontrada na arvore")
         else:
@@ -117,7 +117,6 @@ def buscaNaArvoreArquivo(chave):
                     arqGame.seek(offset[0])
                     tam = st.unpack('<h',arqGame.read(2))[0]
                     reg = arqGame.read(tam).decode()
-                    print(f"o registro solicitado: {chave}")
                     print(f"Registro: {reg}")
             except:
                 print("Arquivo de games nao encontrado")
@@ -131,17 +130,16 @@ def buscaNaArvoreArquivo(chave):
 
 def insereNoArquivo(registro):
     chave = int(registro.split("|")[0])
+    print(f"inserindo no arquivo o registro de chave: {chave}")
     try:
         with open(arqArv, 'rb+') as arqArvb:
             arqArvb.seek(0)
             raiz = int(st.unpack('<I', arqArvb.read(4))[0])
         achou, rrn, pos = buscaNaArvore(chave, raiz)
-        print(achou)
         if achou == False:
             print("Chave nao encontrada na arvore, por isso iremos inserir no arquivo de games e depois na arvore")
             try:
                 with open(arqGam, "rb+") as arqGame:
-                    print("entrou")
                     tam = int(len(registro))
                     tam = st.pack('<h',tam)
                     registro = registro.encode()
@@ -305,9 +303,6 @@ def exibirArvre():
             break
     print("Arvore exibida com sucesso!")
 
-
-
-
 def principal():
     try:
         with open(arqArv, 'rb+')as arqArvb:
@@ -327,11 +322,17 @@ def principal():
             arqArvb.seek(0)
             arqArvb.write(raiz)
 
+def operacoes(nomeArqOP: str):
+    ArqOP = open(nomeArqOP,'r') 
+    linha = ArqOP.readline()
+    while linha:
+        linha = ArqOP.readline()
+        if linha[:1] == "b":
+            print(f"Buscando na arvore o registro de chave: {linha[2:]}")
+            buscaNaArvoreArquivo(linha[2:])
+        elif linha[:1] == "i":
+            insereNoArquivo(linha[2:])
 
-
-exibirArvre()
-
-""""
 if sys.argv[1] == '-c':
     print("===========================")
     print("Modo de criação da árvore-B")
@@ -342,15 +343,11 @@ elif sys.argv[1] == '-e':
     print("============================")
     print("Modo do Arquivo de operações")
     print("============================")
-    
+    operacoes(sys.argv[2])
 elif sys.argv[1] == '-p':
     print("=============================")
     print("Modo de impressão da Árvore-B")
     print("=============================")
-    
+    exibirArvre()
 else:
     print("Flag inválida. Encerrando...")
-
-"""
-
-    
