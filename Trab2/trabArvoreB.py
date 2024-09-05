@@ -63,8 +63,6 @@ def calcOffset(chave: int): #Função para calcular o offset da chave no arquivo
                 achou = True
                 offsetPos = offsetPos-(tam+2)
                 return offsetPos
-                
-    
 
 #######################################################################################################################  
     
@@ -91,7 +89,6 @@ def buscaNaPagina(chave, pag: paginaArvore):
     else:
         return False, pos #Se não achar retorna falso e pos; pos é para a busca nos filhos.
 
-
 def buscaNaArvore(chave, rrn):
     if rrn == -1:
         return False, -1, -1
@@ -106,18 +103,19 @@ def buscaNaArvore(chave, rrn):
         
 def buscaNaArvoreArquivo(chave):
     try:
+        print(f"Busca pelo registro de chave '{int(chave)}'")
         with open(arqArv, 'rb+') as arqArvb:
             raiz = st.unpack('<I', arqArvb.read(4))[0]
         achou, rrn, pos, *offset  = buscaNaArvore(int(chave), raiz) #o * serve para lidar caso tenha um retorno maior do que o esperado no caso essa funcao retorna tanto 3 elementos quanto 4 ai o *offset pega tudo que vem adicional e coloca em um vetor e depois eh so trabalhar como isso como so retorna o offset offset[0] ja resolve
         if achou == False:
-            print("Chave nao encontrada na arvore")
+            print("Erro: registro nao encontrado!")
         else:
             try:
                 with open(arqGam, "rb") as arqGame:
                     arqGame.seek(offset[0])
                     tam = st.unpack('<h',arqGame.read(2))[0]
                     reg = arqGame.read(tam).decode()
-                    print(f"Registro: {reg}")
+                    print(f"{reg} ({tam} bytes - offset {offset[0]} )")
             except:
                 print("Arquivo de games nao encontrado")
     except Exception as e:
@@ -130,14 +128,13 @@ def buscaNaArvoreArquivo(chave):
 
 def insereNoArquivo(registro):
     chave = int(registro.split("|")[0])
-    print(f"inserindo no arquivo o registro de chave: {chave}")
+    print(f"Insercao do registro de chave '{chave}'")
     try:
         with open(arqArv, 'rb+') as arqArvb:
             arqArvb.seek(0)
             raiz = int(st.unpack('<I', arqArvb.read(4))[0])
-        achou, rrn, pos = buscaNaArvore(chave, raiz)
+        achou, rrn, pos, *offset = buscaNaArvore(chave, raiz)
         if achou == False:
-            print("Chave nao encontrada na arvore, por isso iremos inserir no arquivo de games e depois na arvore")
             try:
                 with open(arqGam, "rb+") as arqGame:
                     tam = int(len(registro))
@@ -147,19 +144,21 @@ def insereNoArquivo(registro):
                     arqGame.write(tam)
                     arqGame.write(registro)
                     arqGame.seek(0)
-                    #daqui pra baixo nao ta indo engracado
                     cabeca = st.unpack('<I', arqGame.read(4))[0]
                     cabeca += 1
                     cabeca_bytes = st.pack('<I', cabeca)
                     arqGame.seek(0)
                     arqGame.write(cabeca_bytes)
-                    print("Foi inserido no arquivo e em sequencia na arvore")
                 raiz = gerenciadorDeIsercao(raiz, chave)
                 escreveRaiz(raiz)
+                registro = registro.decode()
+                tam = st.unpack("<h", tam)[0]
+                offset = calcOffset(chave)
+                print(f"{registro.strip("\n")} ({tam} bytes - offset {offset})")
             except Exception as e:
                 print(f"Arquivo de games nao encontrado {e}")
         else:
-            print("Chave ja inserida, o registro nao sera inserido")
+            print(f"Erro: chave '{chave}' já existente!")
     except Exception as e:
         print(f"Arquivo da btree nao encontrado {e}")
 
@@ -191,7 +190,6 @@ def insereNaArvore(chave, rrnAtual): #O rrn atual na primeira chamada da inserç
             escrevePag(filhoDpro, novaPag)
             return chavePro, filhoDpro, True
 
-
 def insereNaPagina(chave, filhoDir, pag: paginaArvore):
     if pag.numChaves == (Ordem-1):
         pag.filhos.append(-1)
@@ -210,7 +208,6 @@ def insereNaPagina(chave, filhoDir, pag: paginaArvore):
     pag.filhos[i+1] = filhoDir
     
     pag.numChaves = pag.numChaves + 1
-
 
 def divide(chave, filhoDir, pag: paginaArvore):
     insereNaPagina(chave, filhoDir, pag) 
@@ -234,8 +231,6 @@ def divide(chave, filhoDir, pag: paginaArvore):
     
     return chavePromo, filhoDirPromo, pAtual, pNova    
     
-
-
 def percorreRegs(arq) -> int: #Retorna a próxima chave
     try:
         tam = st.unpack('<h',arq.read(2))[0]
@@ -245,7 +240,6 @@ def percorreRegs(arq) -> int: #Retorna a próxima chave
     
     except:
         return -1, False
-
 
 def gerenciadorDeIsercao(raiz, chave=None):
     if chave is None:
@@ -328,7 +322,6 @@ def operacoes(nomeArqOP: str):
     while linha:
         linha = ArqOP.readline()
         if linha[:1] == "b":
-            print(f"Buscando na arvore o registro de chave: {linha[2:]}")
             buscaNaArvoreArquivo(linha[2:])
         elif linha[:1] == "i":
             insereNoArquivo(linha[2:])
@@ -338,12 +331,23 @@ if sys.argv[1] == '-c':
     print("Modo de criação da árvore-B")
     print("===========================")
     principal()#Cria indice encadeia funções de inserção da árvore, para a inserção de diversas chaves
-        
+
 elif sys.argv[1] == '-e':
     print("============================")
     print("Modo do Arquivo de operações")
     print("============================")
-    operacoes(sys.argv[2])
+    try:
+        with open(arqGam, "r") as arq:
+            pass
+        try:
+            with open(arqArv, "r") as arqTree:
+                pass
+        except:
+            print(f"arquivo {arqArv} não existe ou não está no diretorio {os.getcwd()}!")
+    except:
+        print(f"arquivo {arqGam} não existe ou não está no diretorio {os.getcwd()}!")
+    else:
+        operacoes(sys.argv[2])
 elif sys.argv[1] == '-p':
     print("=============================")
     print("Modo de impressão da Árvore-B")
