@@ -154,7 +154,7 @@ def insereNoArquivo(registro):
                 registro = registro.decode()
                 tam = st.unpack("<h", tam)[0]
                 offset = calcOffset(chave)
-                print(f"{registro.strip("\n")} ({tam} bytes - offset {offset})")
+                print(f"{registro} ({tam} bytes - offset {offset})")
             except Exception as e:
                 print(f"Arquivo de games nao encontrado {e}")
         else:
@@ -281,21 +281,19 @@ def gerenciadorDeIsercao(raiz, chave=None):
 def exibirArvre():
     with open(arqArv, 'rb') as arq:
         raiz = st.unpack('<I', arq.read(4))[0]
-    i = 0         
-    while True:
-        try:
-            pag = lePagina(i)
-            if i == raiz:
-                print("=============== RAIZ ===============")
-            print(f"Pagina {i}:")
-            print(pag.chaves)
-            print(pag.offsetsFilhos)
-            print(pag.filhos)
-            i = i+1
-            print()
-        except:
-            break
-    print("Arvore exibida com sucesso!")
+        arq.seek(0, os.SEEK_END)
+        tamArquivo = arq.tell()
+        totalPaginas = (tamArquivo - 4) // tamReg
+    for i in range(totalPaginas):
+        pag = lePagina(i)
+        if i == raiz:
+            print("=============== RAIZ ===============")
+        print(f"Página {i}:")
+        print(f"Chaves: {pag.chaves}")
+        print(f"Offsets: {pag.offsetsFilhos}")
+        print(f"Filhas: {pag.filhos}")
+        print()
+    print("Árvore exibida com sucesso!")
 
 def principal():
     try:
@@ -309,8 +307,8 @@ def principal():
             pag = paginaArvore()
             raiz = st.unpack('<I', raiz)[0]
             escrevePag(raiz,pag)
-
         raiz = gerenciadorDeIsercao(raiz)
+
         with open(arqArv, 'rb+')as arqArvb:
             raiz = st.pack("<I", raiz)
             arqArvb.seek(0)
@@ -320,11 +318,11 @@ def operacoes(nomeArqOP: str):
     ArqOP = open(nomeArqOP,'r') 
     linha = ArqOP.readline()
     while linha:
-        linha = ArqOP.readline()
         if linha[:1] == "b":
             buscaNaArvoreArquivo(linha[2:])
         elif linha[:1] == "i":
             insereNoArquivo(linha[2:])
+        linha = ArqOP.readline()
 
 if sys.argv[1] == '-c':
     print("===========================")
