@@ -329,7 +329,7 @@ def operacoes(nomeArqOP: str):
         elif linha[:1] == "i":
             insereNoArquivo(linha[2:])
         linha = ArqOP.readline()
-
+    print(f"As operações do arquivo {nomeArqOP} foram executadas com sucesso!")
 
 
 if sys.argv[1] == '-c':
